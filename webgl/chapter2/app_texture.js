@@ -1,18 +1,20 @@
 var VSHADER_SOURCE=`
 attribute vec4 a_point;
-uniform mat4 u_ModelViewMatrix;
-attribute vec4 a_Color;
-varying vec4 v_Color;
+uniform mat4 u_matrix;
+attribute vec2 a_textureCoord;
+varying vec2 v_textureCoord;
 void main(){
-    gl_Position = u_ModelViewMatrix * a_point;
-    v_Color = a_Color;
+    gl_Position = u_matrix * a_point;
+    v_textureCoord = a_textureCoord;
 }
 `;
 var FSHADER_SOURCE=`
 precision mediump float;
-varying vec4 v_Color;
+varying vec2 v_textureCoord;
+uniform sampler2D u_sampler;
+uniform sampler2D u_sampler_1;
 void main(){
-    gl_FragColor=v_Color;
+    gl_FragColor=texture2D(u_sampler, v_textureCoord) + texture2D(u_sampler_1, v_textureCoord);
 }
 `;
 
@@ -37,9 +39,9 @@ function main(){
 
     var n = initVertexBuffer(gl);
 
-    var u_ModelViewMatrix = gl.getUniformLocation(gl.program, "u_ModelViewMatrix");
-    if(!u_ModelViewMatrix){
-        console.log("failed to get the storage location of u_ModelViewMatrix");
+    var u_matrix = gl.getUniformLocation(gl.program, "u_matrix");
+    if(!u_matrix){
+        console.log("failed to get the storage location of u_matrix");
         return;
     }
 
@@ -52,67 +54,30 @@ function main(){
     // var u_height = gl.getUniformLocation(gl.program, "u_height");
     // gl.uniform1f(u_height, gl.drawingBufferHeight);
 
-    // if(!initTextures(gl, n)){
-    //     return;
-    // }
+    if(!initTextures(gl, n)){
+        return;
+    }
 
-    gl.enable(gl.DEPTH_TEST);
-    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-    matrix.setPerspective(30, canvas.width/ canvas.height, 1, 100);
-    matrix.lookAt(0, 0, 5, 0, 0, -100, 0, 1, 0);
-
-    matrix.translate(0.75, 0, 0);
-    gl.uniformMatrix4fv(u_ModelViewMatrix, false, matrix.elements);
-    gl.drawArrays(gl.TRIANGLES, 0, n);
-
-    matrix.setPerspective(30, canvas.width/ canvas.height, 1, 100);
-    matrix.lookAt(0, 0, 5, 0, 0, -100, 0, 1, 0);
-
-    matrix.translate(-0.75, 0, 0);
-    gl.uniformMatrix4fv(u_ModelViewMatrix, false, matrix.elements);
-    gl.drawArrays(gl.TRIANGLES, 0, n);
-
-    var rotate = 0;
+    var rotate = 45;
     var tick = function(){
-        // if(img_loaded >= 2){
-        rotate = draw(gl, u_ModelViewMatrix, matrix, rotate, n);
-        gl.drawArrays(gl.TRIANGLES, 0, n);
-
-        // }
+        if(img_loaded >= 2){
+            rotate = draw(gl, u_matrix, matrix, rotate, n);
+        }
         window.requestAnimationFrame(tick);
     };
-    // tick();
-
-    window.onkeydown = function(ev){onKeyPressed(ev)};
-    this.updateNearFar();
-}
-
-var near = 0, far = 0.5;
-function onKeyPressed(ev){
-    switch(ev.keyCode){
-        case 37: near += 0.01; break;
-        case 39: near -= 0.01; break;
-        case 38: far += 0.01; break;
-        case 40: far -= 0.01; break;
-    }
-    this.updateNearFar();
-}
-
-function updateNearFar(){
-    var nf = document.getElementById("nearFar");
-    nf.innerHTML = "near: " + near + ", far: " + far;
+    tick();
 }
 
 function draw(gl, u_matrix, matrix, rotate, n){
     rotate += 1;
     rotate %= 360;
-    // matrix.setLookAt(0, 0, 0, 0, 0, 0, 0, 1, 0);
-    // matrix.rotate(rotate, 0, 0, 1);
-    // matrix.setOrtho(-1, 1, -1, 1, near, far);
+    matrix.setIdentity();
+    matrix.rotate(rotate, 0, 0, 1);
+    gl.uniformMatrix4fv(u_matrix, false, matrix.elements);
 
     gl.clear(gl.COLOR_BUFFER_BIT);
 
-    gl.drawArrays(gl.TRIANGLES, 0, n);
+    gl.drawArrays(gl.TRIANGLE_STRIP, 0, n);
     return rotate;
 }
 
@@ -124,17 +89,10 @@ function initVertexBuffer(gl){
     }
     var n = 4;
     var data = new Float32Array([
-        0.0, 1.0, -2.0, 1.0, 1.0, 0.4,
-        -0.5, -1.0, -2.0, 1.0, 1.0, 0.4,
-        0.5, -1.0, -2.0, 1.0, 1.0, 0.4,
-
-        0.0, 1.0, -4.0, 0.4, 1.0, 0.4,
-        -0.5, -1.0, -4.0, 0.4, 1.0, 0.4,
-        0.5, -1.0, -4.0, 0.4, 1.0, 0.4,
-
-        0.0, 1.0, 0.0, 0.4, 0.4, 1.0,
-        -0.5, -1.0, 0.0, 0.4, 0.4, 1.0,
-        0.5, -1.0, 0.0, 0.4, 0.4, 1.0,
+        -0.5, 0.5, 0.0, 1.0,
+        0.5, 0.5, 1.0, 1.0,
+        0.5, -0.5, 1.0, 0.0,
+        -0.5, -0.5, 0.0, 0.0,
     ]);
 
     gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
@@ -143,14 +101,14 @@ function initVertexBuffer(gl){
     var fSize = data.BYTES_PER_ELEMENT;
 
     var a_point = gl.getAttribLocation(gl.program, "a_point");
-    gl.vertexAttribPointer(a_point, 3, gl.FLOAT, false, fSize * 6, 0);
+    gl.vertexAttribPointer(a_point, 2, gl.FLOAT, false, fSize * 4, 0);
     gl.enableVertexAttribArray(a_point);
 
-    var a_Color = gl.getAttribLocation(gl.program, "a_Color");
-    gl.vertexAttribPointer(a_Color, 3, gl.FLOAT, false, fSize * 6, fSize * 3);
-    gl.enableVertexAttribArray(a_Color);
+    var a_textureCoord = gl.getAttribLocation(gl.program, "a_textureCoord");
+    gl.vertexAttribPointer(a_textureCoord, 2, gl.FLOAT, false, fSize * 4, fSize * 2);
+    gl.enableVertexAttribArray(a_textureCoord);
 
-    return 9;
+    return 3;
 }
 
 
