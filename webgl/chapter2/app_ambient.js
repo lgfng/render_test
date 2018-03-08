@@ -8,10 +8,13 @@ uniform mat4 u_NormalMatrix;
 uniform vec3 u_AmbientColor;
 uniform vec3 u_LightColor;
 uniform vec3 u_LightDirection;
+uniform mat4 u_ModelMatrix;
+uniform mat4 u_LightPosition;
 
 varying vec4 v_Color;
 void main(){
     gl_Position = u_ModelViewMatrix * a_point;
+    vec3 direction = u_LightPosition - 
     vec3 normal = normalize(vec3(u_NormalMatrix * a_Normal));
     float nDotL = max(dot(normal, u_LightDirection), 0.0);
     vec3 color = vec3(a_Color);

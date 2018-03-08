@@ -1,23 +1,12 @@
 var VSHADER_SOURCE=`
 attribute vec4 a_point;
-attribute vec4 a_Normal;
-attribute vec4 a_Color;
-
 uniform mat4 u_ModelViewMatrix;
-uniform mat4 u_NormalMatrix;
-uniform vec3 u_AmbientColor;
-uniform vec3 u_LightColor;
-uniform vec3 u_LightDirection;
-
+attribute vec4 a_Color;
 varying vec4 v_Color;
 void main(){
     gl_Position = u_ModelViewMatrix * a_point;
-    vec3 normal = normalize(vec3(u_NormalMatrix * a_Normal));
-    float nDotL = max(dot(normal, u_LightDirection), 0.0);
-    vec3 color = vec3(a_Color);
-    vec3 diffuse = u_LightColor * color * nDotL;
-    vec3 ambient = u_AmbientColor * color;
-    v_Color = vec4(diffuse + ambient, a_Color.a);
+    v_Color = a_Color;
+    gl_PointSize = 10.0;
 }
 `;
 var FSHADER_SOURCE=`
@@ -72,13 +61,10 @@ function main(){
     // gl.enable(gl.POLYGON_OFFSET_FILL);
     // gl.polygonOffset(1.0, 1.0);
 
-    var normalMatrix = new Matrix4();
-    var u_NormalMatrix = gl.getUniformLocation(gl.program, "u_NormalMatrix");
-
     var rotate = 0;
     var tick = function(){
         // if(img_loaded >= 2){
-        rotate = draw(gl, u_ModelViewMatrix, matrix, rotate, n, u_NormalMatrix, normalMatrix);
+        rotate = draw(gl, u_ModelViewMatrix, matrix, rotate, n);
 
         // }
         window.requestAnimationFrame(tick);
@@ -105,26 +91,16 @@ function updateNearFar(){
     nf.innerHTML = "near: " + near + ", far: " + far;
 }
 
-function draw(gl, u_matrix, matrix, rotate, n, u_NormalMatrix, normaMatrix){
+function draw(gl, u_matrix, matrix, rotate, n){
     rotate += 1;
     rotate %= 360;
     var rad = Math.PI * rotate / 180;
     // matrix.setIdentity();
-
-    var modelMatrix = new Matrix4();
-    modelMatrix.setTranslate(0, 0.2, 0);
-    modelMatrix.rotate(rotate, 0, 1, 1);
-
     matrix.setPerspective(30, canvas.width/ canvas.height, 1, 100);
-    // matrix.lookAt(3 * Math.cos(rad), 3, 7, 0, 0, 0, 0, 1, 0);
-    matrix.lookAt(3, 3, 7, 0, 0, 0, 0, 1, 0);
-    matrix.multiply(modelMatrix);
+    matrix.lookAt(5 * Math.cos(rad), 5, 5 * Math.sin(rad), 0, 0, 0, 0, 1, 0);
+    // matrix.lookAt(0, 0, 5, 0, 0, 0, 0, 1, 0);
 
     gl.uniformMatrix4fv(u_matrix, false, matrix.elements);
-
-    normaMatrix.setInverseOf(modelMatrix);
-    normaMatrix.transpose();
-    gl.uniformMatrix4fv(u_NormalMatrix, false, normaMatrix.elements);
 
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
@@ -172,62 +148,39 @@ function initVertexBuffer(gl){
     ]);
 
     var colors = new Float32Array([
-        1.0, 1.0, 1.0,
-        1.0, 1.0, 1.0,
-        1.0, 1.0, 1.0,
-        1.0, 1.0, 1.0,
+        1.0, 0.0, 0.0,
+        1.0, 0.0, 0.0,
+        1.0, 0.0, 0.0,
+        1.0, 0.0, 0.0,
 
-        1.0, 1.0, 1.0,
-        1.0, 1.0, 1.0,
-        1.0, 1.0, 1.0,
-        1.0, 1.0, 1.0,
+        0.0, 1.0, 0.0,
+        0.0, 1.0, 0.0,
+        0.0, 1.0, 0.0,
+        0.0, 1.0, 0.0,
         
-        1.0, 1.0, 1.0,
-        1.0, 1.0, 1.0,
-        1.0, 1.0, 1.0,
-        1.0, 1.0, 1.0,
+        0.0, 0.0, 1.0,
+        0.0, 0.0, 1.0,
+        0.0, 0.0, 1.0,
+        0.0, 0.0, 1.0,
         
-        1.0, 1.0, 1.0,
-        1.0, 1.0, 1.0,
-        1.0, 1.0, 1.0,
-        1.0, 1.0, 1.0,
+        1.0, 1.0, 0.0,
+        1.0, 1.0, 0.0,
+        1.0, 1.0, 0.0,
+        1.0, 1.0, 0.0,
         
-        1.0, 1.0, 1.0,
-        1.0, 1.0, 1.0,
-        1.0, 1.0, 1.0,
-        1.0, 1.0, 1.0,
+        1.0, 0.0, 1.0,
+        1.0, 0.0, 1.0,
+        1.0, 0.0, 1.0,
+        1.0, 0.0, 1.0,
         
-        1.0, 1.0, 1.0,
-        1.0, 1.0, 1.0,
-        1.0, 1.0, 1.0,
-        1.0, 1.0, 1.0,
-    ]);
-
-    var normals = new Float32Array([
-       0.0, 0.0, 1.0,  0.0, 0.0, 1.0,  0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 
-       0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0,  0.0, 1.0, 0.0,
-       1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0,
-       -1.0, 0.0, 0.0, -1.0, 0.0, 0.0, -1.0, 0.0, 0.0, -1.0, 0.0, 0.0,
-       0.0, -1.0, 0.0, 0.0, -1.0, 0.0, 0.0, -1.0, 0.0, 0.0, -1.0, 0.0,
-       0.0, 0.0, -1.0,  0.0, 0.0, -1.0,  0.0, 0.0, -1.0,  0.0, 0.0, -1.0, 
+        0.0, 1.0, 1.0,
+        0.0, 1.0, 1.0,
+        0.0, 1.0, 1.0,
+        0.0, 1.0, 1.0,
     ]);
     
     initArraryBuffer(gl, points, 3, gl.FLOAT, "a_point");
     initArraryBuffer(gl, colors, 3, gl.FLOAT, "a_Color");
-    initArraryBuffer(gl, normals, 3, gl.FLOAT, "a_Normal");
-
-    var u_LightColor = gl.getUniformLocation(gl.program, "u_LightColor");
-    var u_LightDirection = gl.getUniformLocation(gl.program, "u_LightDirection");
-
-    var lightColor = new Vector3([1, 0.0, 0.0]);
-    var lightDirection = new Vector3([0.5, 3.0, 4.0]);
-    lightDirection.normalize();
-
-    gl.uniform3fv(u_LightColor, lightColor.elements);
-    gl.uniform3fv(u_LightDirection, lightDirection.elements);
-
-    var u_AmbientColor = gl.getUniformLocation(gl.program, "u_AmbientColor");
-    gl.uniform3f(u_AmbientColor, 0.2, 0.2, 0.2);
 
     var n = 4;
     var indeices = new Uint8Array([
