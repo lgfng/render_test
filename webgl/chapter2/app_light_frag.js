@@ -5,31 +5,39 @@ attribute vec4 a_Color;
 
 uniform mat4 u_ModelViewMatrix;
 uniform mat4 u_NormalMatrix;
-uniform vec3 u_AmbientColor;
-uniform vec3 u_LightColor;
-uniform vec3 u_LightPosition;
 uniform mat4 u_ModelMatrix;
 
 varying vec4 v_Color;
+varying vec3 v_Normal;
+varying vec3 v_Position;
+
 void main(){
     gl_Position = u_ModelViewMatrix * a_point;
 
-    vec4 position = u_ModelMatrix * a_point;
-    vec3 direction = normalize(u_LightPosition - vec3(position));
-    vec3 normal = normalize(vec3(u_NormalMatrix * a_Normal));
-    float nDotL = max(dot(normal, direction), 0.0);
-    vec3 color = vec3(a_Color);
-    vec3 diffuse = u_LightColor * color * nDotL;
-    vec3 ambient = u_AmbientColor * color;
-    v_Color = vec4(diffuse + ambient, a_Color.a);
-    // v_Color = vec4(direction, 1.0);
+    v_Color = a_Color;
+    v_Normal = normalize(vec3(u_NormalMatrix * a_Normal));
+    v_Position = vec3(u_ModelMatrix * a_point);
 }
 `;
 var FSHADER_SOURCE=`
 precision mediump float;
+uniform vec3 u_AmbientColor;
+uniform vec3 u_LightColor;
+uniform vec3 u_LightPosition;
+
 varying vec4 v_Color;
+varying vec3 v_Normal;
+varying vec3 v_Position;
+
 void main(){
-    gl_FragColor=v_Color;
+    vec3 direction = normalize(u_LightPosition - v_Position);
+    vec3 normal = normalize(v_Normal);
+    float nDotL = max(dot(normal, direction), 0.0);
+    vec3 color = vec3(v_Color);
+    vec3 diffuse = u_LightColor * color * nDotL;
+    vec3 ambient = u_AmbientColor * color;
+    gl_FragColor = vec4(diffuse + ambient, v_Color.a);
+    // v_Color = vec4(direction, 1.0);
 }
 `;
 
