@@ -12,13 +12,8 @@ var FSHADER_SOURCE=`
 precision mediump float;
 varying vec2 v_textureCoord;
 uniform sampler2D u_sampler;
-uniform bool u_Clicked;
 void main(){
-    if(u_Clicked){
-        gl_FragColor = vec4(1.0, 0.0, 0.0, 1.0);
-    } else {
-        gl_FragColor=texture2D(u_sampler, v_textureCoord);
-    }
+    gl_FragColor=texture2D(u_sampler, v_textureCoord);
 }
 `;
 
@@ -52,9 +47,6 @@ function main(){
         return;
     }
 
-    var u_Clicked = gl.getUniformLocation(gl.program, "u_Clicked");
-    gl.uniform1i(u_Clicked, 0);
-
     gl.clearColor(0.0, 0.0,0.0, 1.0);
     gl.enable(gl.DEPTH_TEST);
 
@@ -64,47 +56,53 @@ function main(){
 
     var tick = function(){
         if(img_loaded >= 1){
-            draw(gl, n, viewProjMatrix, u_matrix);
+            draw(gl, viewProjMatrix, u_matrix, n);
         }
-        g_rotate_x += 1;
-        g_rotate_x = g_rotate_x % 360;
         window.requestAnimationFrame(tick);
     };
     tick();
 
+    initEventHandler(canvas);
+}
+
+function initEventHandler(canvas){
+    var dragging = false;
+    var lastX = -1, lastY = -1;
     canvas.onmousedown = function(ev){
         var x = ev.clientX;
         var y = ev.clientY;
         var rect = ev.target.getBoundingClientRect();
         if(rect.left <= x && x < rect.right && rect.bottom > y && rect.top <= y){
-            var x_in_canvas = x- rect.left;
-            var y_in_canvas = rect.bottom - y;
-            var picked = check(gl, n, x_in_canvas, y_in_canvas, u_Clicked, viewProjMatrix, u_matrix);
-            if(picked){
-                alert("you clicked on cube");
-            }
+            lastX = x;
+            lastY = y;
+            dragging = true;
         }
     }
-}
 
-function check(gl, n, x, y, u_Clicked, viewProjMatrix, u_mvpMatrix){
-    var picked = false;
-    gl.uniform1i(u_Clicked, 1);
-    draw(gl, n, viewProjMatrix, u_mvpMatrix);
-    var pixels = new Uint8Array(4);
-    gl.readPixels(x, y, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
-    if(pixels[0] === 255){
-        picked = true;
+    canvas.onmouseup = function(ev){
+        dragging = false;
     }
 
-    gl.uniform1i(u_Clicked, 0);
-    draw(gl, n, viewProjMatrix, u_mvpMatrix);
-    return picked;
+    canvas.onmousemove = function(ev){
+        var x = ev.clientX;
+        var y = ev.clientY;
+        if(dragging){
+            var factor = 100/ canvas.height;
+            var dx = factor * (x - lastX);
+            var dy = factor * (y - lastY);
+
+            g_rotate_x = Math.max(Math.min(g_rotate_x + dy, 90.0), -90);
+            g_rotate_y = g_rotate_y + dx;
+            console.log(g_rotate_x, g_rotate_y);
+        }
+        lastX = x; 
+        lastY = y;
+    }
 }
 
 var g_rotate_x = 0.0, g_rotate_y = 0.0;
 var g_mvpMatrix = new Matrix4();
-function draw(gl, n, viewProjMatrix, u_matrix){
+function draw(gl, viewProjMatrix, u_matrix, n){
     g_mvpMatrix.set(viewProjMatrix);
     g_mvpMatrix.rotate(g_rotate_x, 1, 0, 0);
     g_mvpMatrix.rotate(g_rotate_y, 0, 1, 0);
